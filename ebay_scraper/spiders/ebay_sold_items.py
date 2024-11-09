@@ -19,22 +19,22 @@ class EbaySoldItemsSpider(scrapy.Spider):
     def start_requests(self):
         yield scrapy.Request(
             url=self.start_urls[0],
-            meta=dict(
-                playwright=True,
-                playwright_include_page=True,
-                playwright_page_methods=[
-                    PageMethod("wait_for_selector", "#gdpr-banner-accept"),  # wait for accept cookies banner
-                    PageMethod("click", "#gdpr-banner-accept"),  # Click accept cookies button
-                    PageMethod("wait_for_load_state", "networkidle"), 
-                    PageMethod("fill", "#gh-ac", "nike airforce size 9"),  # type search term into box
-                    PageMethod("wait_for_timeout", 300), 
+            meta={
+                "playwright": True,
+                "playwright_include_page": True,
+                "playwright_page_methods": [
+                    PageMethod("wait_for_selector", "#gdpr-banner-accept"),
+                    PageMethod("click", "#gdpr-banner-accept"),
+                    PageMethod("wait_for_load_state", "networkidle"),
+                    PageMethod("fill", "#gh-ac", "nike airforce size 9"),
+                    PageMethod("wait_for_timeout", 300),
                     PageMethod("press", "#gh-ac", "Enter"),
-                    PageMethod("wait_for_selector", ".srp-results"),  # wait for results tag
-                    PageMethod("wait_for_selector", "span.cbx.x-refine__multi-select-cbx:has-text('Sold items')"), # wait for sold items checkbox
-                    PageMethod("click", "span.cbx.x-refine__multi-select-cbx:has-text('Sold items')"), # click sold items checkbox
-                    PageMethod("wait_for_selector", "h1.srp-controls__count-heading")  # wait for results tag heading to load
+                    PageMethod("wait_for_selector", ".srp-results"),
+                    PageMethod("wait_for_selector", "span.cbx.x-refine__multi-select-cbx:has-text('Sold items')"),
+                    PageMethod("click", "span.cbx.x-refine__multi-select-cbx:has-text('Sold items')"),
+                    PageMethod("wait_for_selector", "h1.srp-controls__count-heading"),
                 ],
-            ),
+            },
             callback=self.parse
         )
 
@@ -42,15 +42,15 @@ class EbaySoldItemsSpider(scrapy.Spider):
         page = response.meta["playwright_page"]
 
         if self.total_results is None:
-            result_count_text = response.css("h1.srp-controls__count-heading span.BOLD::text").get()
-            if result_count_text:
-                self.total_results = int(result_count_text.replace(",", ""))
+            total_results_text = response.css("h1.srp-controls__count-heading span.BOLD::text").get()
+            if total_results_text:
+                self.total_results = int(total_results_text.replace(",", ""))
                 self.logger.info(f"Total results for search (Sold items): {self.total_results}")
 
         while self.items_scraped < self.total_results:
             try:
-                html = await page.content()
-                response = TextResponse(url=page.url, body=html, encoding='utf-8')
+                html_content = await page.content()
+                response = TextResponse(url=page.url, body=html_content, encoding='utf-8')
 
                 for item in response.css("li.s-item"):
                     item_data = {
@@ -65,7 +65,7 @@ class EbaySoldItemsSpider(scrapy.Spider):
                         "best_offer": item.css("span.s-item__dynamic.s-item__formatBestOfferEnabled::text").get(),
                         "seller_info": item.css("span.s-item__seller-info-text::text").get(),
                         "rating": item.css("div.x-star-rating .clipped::text").get(),
-                        "rating_count": item.css("span.s-item__reviews-count span[aria-hidden='false']::text").get()
+                        "rating_count": item.css("span.s-item__reviews-count span[aria-hidden='false']::text").get(),
                     }
 
                     if not item_data["item_id"] or item_data["title"] == "Shop on eBay":
@@ -97,6 +97,5 @@ class EbaySoldItemsSpider(scrapy.Spider):
                 self.logger.error(f"Timeout error encountered. Screenshot saved as {screenshot_path}")
                 await page.close()
                 return
-
 
         await page.close()
