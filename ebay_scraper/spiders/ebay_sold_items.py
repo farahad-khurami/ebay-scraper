@@ -23,7 +23,7 @@ class EbaySoldItemsSpider(scrapy.Spider):
                     PageMethod("wait_for_selector", "#gdpr-banner-accept"),  # wait for accept cookies banner
                     PageMethod("click", "#gdpr-banner-accept"),  # Click accept cookies button
                     PageMethod("wait_for_load_state", "networkidle"), 
-                    PageMethod("fill", "#gh-ac", "lego bionicle"),  # type search term into box
+                    PageMethod("fill", "#gh-ac", "nike airforce size 9"),  # type search term into box
                     PageMethod("wait_for_timeout", 300), 
                     PageMethod("press", "#gh-ac", "Enter"),
                     PageMethod("wait_for_selector", ".srp-results"),  # wait for results tag
@@ -42,7 +42,7 @@ class EbaySoldItemsSpider(scrapy.Spider):
             result_count_text = response.css("h1.srp-controls__count-heading span.BOLD::text").get()
             if result_count_text:
                 self.total_results = int(result_count_text.replace(",", ""))
-                self.logger.info(f"Total results for LEGO 75309 (Sold items): {self.total_results}")
+                self.logger.info(f"Total results for search (Sold items): {self.total_results}")
 
         while self.items_scraped < self.total_results:
             html = await page.content()
@@ -81,8 +81,6 @@ class EbaySoldItemsSpider(scrapy.Spider):
                 self.logger.info("Clicking 'Next' button to load more items")
                 await next_button.click()
                 await page.wait_for_selector(".srp-results")
-            else:
-                self.logger.info("No more pages to navigate.")
-                break
+
 
         await page.close()
