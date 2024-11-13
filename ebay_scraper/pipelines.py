@@ -1,7 +1,28 @@
 import os
 import re
-import sqlite3
 from datetime import datetime
+
+from sqlalchemy import create_engine, Column, String, Float, Integer
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import sessionmaker
+
+Base = declarative_base()
+
+class SoldItem(Base):
+    __tablename__ = 'sold_items'
+
+    item_id = Column(String, primary_key=True)
+    item_url = Column(String)
+    image_url = Column(String)
+    title = Column(String)
+    condition = Column(String)
+    date_sold = Column(String)
+    price = Column(Float)
+    shipping_cost = Column(String)
+    best_offer = Column(String)
+    seller_info = Column(String)
+    rating = Column(Float)
+    rating_count = Column(Integer)
 
 
 class EbaySoldItemsPipeline:
@@ -9,7 +30,8 @@ class EbaySoldItemsPipeline:
         self._initialise_database()
 
     def close_spider(self, spider):
-        self._close_database_connection()
+        self.session.close()
+        self.engine.dispose()
 
     def process_item(self, item, spider):
         item["price"] = self._convert_price_to_float(item.get("price"))
@@ -21,56 +43,30 @@ class EbaySoldItemsPipeline:
     def _initialise_database(self):
         os.makedirs("database", exist_ok=True)
 
-        self.connection = sqlite3.connect("database/ebay_sold_items.db")
-        self.cursor = self.connection.cursor()
-        self.cursor.execute(
-            """
-            CREATE TABLE IF NOT EXISTS sold_items (
-                item_id TEXT PRIMARY KEY,
-                item_url TEXT,
-                image_url TEXT,
-                title TEXT,
-                condition TEXT,
-                date_sold TEXT,
-                price REAL,
-                shipping_cost TEXT,
-                best_offer TEXT,
-                seller_info TEXT,
-                rating REAL,
-                rating_count INTEGER
-            )
-            """
-        )
-        self.connection.commit()
-
-    def _close_database_connection(self):
-        self.connection.commit()
-        self.connection.close()
+        self.engine = create_engine("sqlite:///database/ebay_sold_items.db")
+        Base.metadata.create_all(self.engine)
+        Session = sessionmaker(bind=self.engine)
+        self.session = Session()
 
     def _insert_item_into_database(self, item):
-        self.cursor.execute(
-            """
-            INSERT OR IGNORE INTO sold_items (
-                item_id, item_url, image_url, title, condition, date_sold, 
-                price, shipping_cost, best_offer, seller_info, rating, rating_count
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """,
-            (
-                item.get("item_id"),
-                item.get("item_url"),
-                item.get("image_url"),
-                item.get("title"),
-                item.get("condition"),
-                item.get("date_sold"),
-                item.get("price"),
-                item.get("shipping_cost"),
-                item.get("best_offer"),
-                item.get("seller_info"),
-                item.get("rating"),
-                item.get("rating_count"),
-            ),
+        sold_item = SoldItem(
+            item_id=item.get("item_id"),
+            item_url=item.get("item_url"),
+            image_url=item.get("image_url"),
+            title=item.get("title"),
+            condition=item.get("condition"),
+            date_sold=item.get("date_sold"),
+            price=item.get("price"),
+            shipping_cost=item.get("shipping_cost"),
+            best_offer=item.get("best_offer"),
+            seller_info=item.get("seller_info"),
+            rating=item.get("rating"),
+            rating_count=item.get("rating_count"),
         )
-        self.connection.commit()
+
+        if not self.session.query(SoldItem).filter_by(item_id=sold_item.item_id).first():
+            self.session.add(sold_item)
+            self.session.commit()
 
     def _convert_price_to_float(self, price_str):
         if not price_str:
@@ -90,8 +86,8 @@ class EbaySoldItemsPipeline:
             day, month_str, year = match.groups()
             try:
                 month = datetime.strptime(month_str, "%b").month
-                standardised_date = datetime(int(year), month, int(day))
-                return standardised_date.strftime("%Y-%m-%d")
+                standardized_date = datetime(int(year), month, int(day))
+                return standardized_date.strftime("%Y-%m-%d")
             except ValueError:
                 return None
         return None
