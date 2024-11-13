@@ -69,7 +69,6 @@ class EbaySoldItemsSpider(scrapy.Spider):
                     }
 
                     if not item_data["item_id"] or item_data["title"] == "Shop on eBay":
-                        self.logger.info("Skipping unwanted item")
                         continue
 
                     yield item_data
