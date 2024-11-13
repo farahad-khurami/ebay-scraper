@@ -45,7 +45,7 @@ DOWNLOAD_HANDLERS = {
     "https": "scrapy_playwright.handler.ScrapyPlaywrightDownloadHandler",
 }
 
-PLAYWRIGHT_LAUNCH_OPTIONS = {"headless": False}
+PLAYWRIGHT_LAUNCH_OPTIONS = {"headless": True}
 
 # Rotating tor proxy and rotating middleware settings
 DOWNLOADER_MIDDLEWARES = {
@@ -56,17 +56,6 @@ DOWNLOADER_MIDDLEWARES = {
 
 ROTATING_PROXY_LIST_PATH = "tor_proxy/proxy_list.txt"
 ROTATING_PROXY_PAGE_RETRY_TIMES = 5
-
-# output settings (temporary for now)
-
-FEEDS = {
-    'output.json': {
-        'format': 'json',
-        'encoding': 'utf8',
-        'indent': 4,  # Optional: pretty-print the JSON
-        'overwrite': True  # Overwrite file each time the spider is run
-    }
-}
 
 # Enable and configure HTTP caching (disabled by default)
 # See https://docs.scrapy.org/en/latest/topics/downloader-middleware.html#httpcache-middleware-settings
