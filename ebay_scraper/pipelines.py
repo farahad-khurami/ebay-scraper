@@ -19,7 +19,6 @@ class SoldItem(Base):
     price = Column(Float)
     shipping_cost = Column(String)
     best_offer = Column(String)
-    seller_info = Column(String)  # Raw seller info for reference
     seller_name = Column(String)
     seller_feedback_score = Column(Integer)
     seller_feedback_percent = Column(Float)
