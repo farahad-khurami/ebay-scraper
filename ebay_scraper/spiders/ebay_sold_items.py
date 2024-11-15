@@ -16,7 +16,7 @@ class EbaySoldItemsSpider(scrapy.Spider):
         super().__init__(*args, **kwargs)
         self.items_scraped = 0
         self.total_results = None
-        self.search_query = "nike airforce size 9"
+        self.search_query = "bionicle"
 
     def start_requests(self):
         yield scrapy.Request(
@@ -133,9 +133,6 @@ class EbaySoldItemsSpider(scrapy.Spider):
             ).get(),
             "seller_info": item.css("span.s-item__seller-info-text::text").get(),
             "rating": item.css("div.x-star-rating .clipped::text").get(),
-            "rating_count": item.css(
-                "span.s-item__reviews-count span[aria-hidden='false']::text"
-            ).get(),
         }
 
         if not item_data["item_id"] or item_data["title"] == "Shop on eBay":

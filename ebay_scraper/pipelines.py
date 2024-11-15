@@ -24,7 +24,6 @@ class SoldItem(Base):
     seller_feedback_score = Column(Integer)
     seller_feedback_percent = Column(Float)
     rating = Column(Float)
-    rating_count = Column(Integer)
 
 
 class EbaySoldItemsPipeline:
@@ -71,7 +70,6 @@ class EbaySoldItemsPipeline:
             seller_feedback_score=item.get("seller_feedback_score"),
             seller_feedback_percent=item.get("seller_feedback_percent"),
             rating=item.get("rating"),
-            rating_count=item.get("rating_count"),
         )
 
         if not self.session.query(SoldItem).filter_by(item_id=sold_item.item_id).first():
