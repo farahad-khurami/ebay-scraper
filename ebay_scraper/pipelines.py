@@ -7,8 +7,9 @@ from sqlalchemy.orm import sessionmaker
 
 Base = declarative_base()
 
+
 class SoldItem(Base):
-    __tablename__ = 'sold_items'
+    __tablename__ = "sold_items"
 
     item_id = Column(String, primary_key=True)
     item_url = Column(String)
@@ -39,7 +40,9 @@ class EbaySoldItemsPipeline:
         item["rating"] = self._extract_rating(item.get("rating"))
 
         # Parse seller_info into separate fields
-        seller_name, seller_feedback_score, seller_feedback_percent = self._parse_seller_info(item.get("seller_info"))
+        seller_name, seller_feedback_score, seller_feedback_percent = (
+            self._parse_seller_info(item.get("seller_info"))
+        )
         item["seller_name"] = seller_name
         item["seller_feedback_score"] = seller_feedback_score
         item["seller_feedback_percent"] = seller_feedback_percent
@@ -71,7 +74,11 @@ class EbaySoldItemsPipeline:
             rating=item.get("rating"),
         )
 
-        if not self.session.query(SoldItem).filter_by(item_id=sold_item.item_id).first():
+        if (
+            not self.session.query(SoldItem)
+            .filter_by(item_id=sold_item.item_id)
+            .first()
+        ):
             self.session.add(sold_item)
             self.session.commit()
 
@@ -110,10 +117,14 @@ class EbaySoldItemsPipeline:
         return None
 
     def _parse_seller_info(self, seller_info):
+        if not seller_info:
+            return None, None, None
+
         match = re.match(r"([^()]+)\s+\(([\d,]+)\)\s+(\d+(\.\d+)?%)", seller_info)
         if match:
             seller_name = match.group(1).strip()
             seller_feedback_score = int(match.group(2).replace(",", ""))
             seller_feedback_percent = match.group(3).replace("%", "").strip()
             return seller_name, seller_feedback_score, float(seller_feedback_percent)
+
         return None, None, None
