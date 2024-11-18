@@ -3,7 +3,7 @@ from faker import Faker
 fake = Faker(["en_US", "en_GB", "en_CA", "en_AU", "en_NZ", "en_IE", "en_IN"])
 
 # Set the number of uniquely named proxies to generate and the IP change interval
-NUM_PROXIES = 5
+NUM_PROXIES = 30
 IP_CHANGE_SECONDS = 60
 
 
