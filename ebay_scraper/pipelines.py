@@ -24,7 +24,6 @@ class SoldItem(Base):
     seller_name = Column(String)
     seller_feedback_score = Column(Integer)
     seller_feedback_percent = Column(Float)
-    rating = Column(Float)
 
 
 class EbaySoldItemsPipeline:
@@ -38,7 +37,6 @@ class EbaySoldItemsPipeline:
     def process_item(self, item, spider):
         item["price"] = self._convert_price_to_float(item.get("price"))
         item["date_sold"] = self._standardise_date(item.get("date_sold"))
-        item["rating"] = self._extract_rating(item.get("rating"))
         item["shipping_cost"] = self._parse_shipping_cost(item.get("shipping_cost"))
         item["shipping_location"] = self._parse_shipping_location(
             item.get("shipping_location")
@@ -77,7 +75,6 @@ class EbaySoldItemsPipeline:
             seller_name=item.get("seller_name"),
             seller_feedback_score=item.get("seller_feedback_score"),
             seller_feedback_percent=item.get("seller_feedback_percent"),
-            rating=item.get("rating"),
         )
 
         if (
@@ -107,17 +104,6 @@ class EbaySoldItemsPipeline:
                 month = datetime.strptime(month_str, "%b").month
                 standardised_date = datetime(int(year), month, int(day))
                 return standardised_date.strftime("%Y-%m-%d")
-            except ValueError:
-                return None
-        return None
-
-    def _extract_rating(self, rating_str):
-        if not rating_str:
-            return None
-        match = re.search(r"(\d+(\.\d+)?)", rating_str)
-        if match:
-            try:
-                return float(match.group(1))
             except ValueError:
                 return None
         return None

@@ -138,7 +138,6 @@ class EbaySoldItemsSpider(scrapy.Spider):
                 "span.s-item__dynamic.s-item__formatBestOfferEnabled::text"
             ).get(),
             "seller_info": item.css("span.s-item__seller-info-text::text").get(),
-            "rating": item.css("div.x-star-rating .clipped::text").get(),
         }
 
         if not item_data["item_id"] or item_data["title"] == "Shop on eBay":
