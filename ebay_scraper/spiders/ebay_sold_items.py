@@ -12,8 +12,12 @@ class EbaySoldItemsSpider(scrapy.Spider):
     allowed_domains = ["www.ebay.co.uk"]  # Restrict scraping to these domains
     start_urls = ["https://www.ebay.co.uk"]  # Initial URL to start scraping
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, max_items=None, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.max_items = (
+            int(max_items) if max_items else None
+        )  # Optional max_items: Limits the number of items to scrape if specified.
+        # Usage: scrapy crawl ebay_sold_items -a max_items=100
         self.items_scraped = 0  # Counter for the number of items scraped
         self.total_results = None  # Total number of results for the query
         self.search_query = "bionicle"  # Search query for eBay
@@ -41,8 +45,12 @@ class EbaySoldItemsSpider(scrapy.Spider):
                 f"Total results for search (Sold items): {self.total_results}"
             )
 
-        # Loop until all items are scraped or pagination ends
+        # Loop until all items are scraped, max_items is reached, or pagination ends
         while self.items_scraped < self.total_results:
+            if self.max_items and self.items_scraped >= self.max_items:
+                self.logger.info("Reached max_items limit, stopping pagination.")
+                break
+
             try:
                 # Process current page and yield scraped items
                 async for item in self._process_current_page(page):
@@ -55,7 +63,12 @@ class EbaySoldItemsSpider(scrapy.Spider):
             except TimeoutError:
                 # Handle timeout errors by taking a screenshot and stopping
                 await self._handle_timeout_error(page)
-                return
+                break
+
+        # Log the total number of items scraped
+        self.logger.info(
+            f"Scraping session ended. Total items scraped: {self.items_scraped}"
+        )
 
         # Close the Playwright page after scraping is complete
         await page.close()
@@ -73,14 +86,12 @@ class EbaySoldItemsSpider(scrapy.Spider):
             PageMethod(
                 "wait_for_selector",
                 "span.cbx.x-refine__multi-select-cbx:has-text('Sold items')",
-            ),  # Wait for the 'Sold items' filter
+            ),
             PageMethod(
                 "click",
                 "span.cbx.x-refine__multi-select-cbx:has-text('Sold items')",
-            ),  # Apply the 'Sold items' filter
-            PageMethod(
-                "wait_for_selector", "h1.srp-controls__count-heading"
-            ),  # Wait for the results count to load
+            ),
+            PageMethod("wait_for_selector", "h1.srp-controls__count-heading"),
         ]
 
     def _extract_total_results(self, response):
@@ -106,12 +117,11 @@ class EbaySoldItemsSpider(scrapy.Spider):
                 yield item_data  # Yield the item data
                 self.items_scraped += 1  # Increment the scraped items counter
 
-                # Stop if the total result count is reached
-                if self.items_scraped >= self.total_results:
+                # Stop if the maximum number of items has been reached
+                if self.max_items and self.items_scraped >= self.max_items:
                     self.logger.info(
-                        "Reached the total result count, stopping pagination."
+                        "Reached the max_items limit, stopping pagination."
                     )
-                    await page.close()
                     return
 
     async def _go_to_next_page(self, page):
