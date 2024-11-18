@@ -38,6 +38,7 @@ class EbaySoldItemsPipeline:
         item["price"] = self._convert_price_to_float(item.get("price"))
         item["date_sold"] = self._standardise_date(item.get("date_sold"))
         item["rating"] = self._extract_rating(item.get("rating"))
+        item["shipping_cost"] = self._parse_shipping_cost(item.get("shipping_cost"))
 
         # Parse seller_info into separate fields
         seller_name, seller_feedback_score, seller_feedback_percent = (
@@ -128,3 +129,12 @@ class EbaySoldItemsPipeline:
             return seller_name, seller_feedback_score, float(seller_feedback_percent)
 
         return None, None, None
+
+    def _parse_shipping_cost(self, shipping_cost):
+        if not shipping_cost:
+            return None
+        translation_table = str.maketrans({"£": "", "+": ""})
+        parsed_shipping_cost = (
+            shipping_cost.translate(translation_table).replace("postage", "").strip()
+        )
+        return parsed_shipping_cost

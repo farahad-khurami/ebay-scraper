@@ -45,7 +45,7 @@ DOWNLOAD_HANDLERS = {
     "https": "scrapy_playwright.handler.ScrapyPlaywrightDownloadHandler",
 }
 
-PLAYWRIGHT_LAUNCH_OPTIONS = {"headless": True}
+PLAYWRIGHT_LAUNCH_OPTIONS = {"headless": False}
 
 # Rotating tor proxy and rotating middleware settings
 DOWNLOADER_MIDDLEWARES = {
