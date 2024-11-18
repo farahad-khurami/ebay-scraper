@@ -19,6 +19,7 @@ class SoldItem(Base):
     date_sold = Column(String)
     price = Column(Float)
     shipping_cost = Column(String)
+    shipping_location = Column(String)
     best_offer = Column(String)
     seller_name = Column(String)
     seller_feedback_score = Column(Integer)
@@ -39,6 +40,9 @@ class EbaySoldItemsPipeline:
         item["date_sold"] = self._standardise_date(item.get("date_sold"))
         item["rating"] = self._extract_rating(item.get("rating"))
         item["shipping_cost"] = self._parse_shipping_cost(item.get("shipping_cost"))
+        item["shipping_location"] = self._parse_shipping_location(
+            item.get("shipping_location")
+        )
 
         # Parse seller_info into separate fields
         seller_name, seller_feedback_score, seller_feedback_percent = (
@@ -68,6 +72,7 @@ class EbaySoldItemsPipeline:
             date_sold=item.get("date_sold"),
             price=item.get("price"),
             shipping_cost=item.get("shipping_cost"),
+            shipping_location=item.get("shipping_location"),
             best_offer=item.get("best_offer"),
             seller_name=item.get("seller_name"),
             seller_feedback_score=item.get("seller_feedback_score"),
@@ -138,3 +143,9 @@ class EbaySoldItemsPipeline:
             shipping_cost.translate(translation_table).replace("postage", "").strip()
         )
         return parsed_shipping_cost
+
+    def _parse_shipping_location(self, shipping_location):
+        if not shipping_location:
+            return None
+        parsed_shipping_location = shipping_location.replace("from", "").strip()
+        return parsed_shipping_location

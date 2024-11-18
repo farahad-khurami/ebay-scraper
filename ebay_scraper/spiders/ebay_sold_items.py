@@ -127,7 +127,13 @@ class EbaySoldItemsSpider(scrapy.Spider):
                 "span.s-item__caption--signal.POSITIVE span::text"
             ).get(),
             "price": item.css("span.s-item__price span.POSITIVE::text").get(),
-            "shipping_cost": item.css("span.s-item__shipping::text").get(),
+            "shipping_cost": item.css(
+                ".s-item__shipping.s-item__logisticsCost span::text"
+            ).get()
+            or item.css("span.s-item__shipping::text").get(),
+            "shipping_location": item.css(
+                ".s-item__location.s-item__itemLocation span::text"
+            ).get(),
             "best_offer": item.css(
                 "span.s-item__dynamic.s-item__formatBestOfferEnabled::text"
             ).get(),
