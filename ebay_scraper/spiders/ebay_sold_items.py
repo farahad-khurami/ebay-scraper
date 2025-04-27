@@ -77,6 +77,7 @@ class EbaySoldItemsSpider(scrapy.Spider):
         Yields:
             dict: A dictionary containing scraped item data.
         """
+        self.logger.info("Starting the parsing process.")
         page = response.meta["playwright_page"]
 
         if self.total_results is None:
@@ -91,6 +92,8 @@ class EbaySoldItemsSpider(scrapy.Spider):
                 break
 
             try:
+                self.logger.info(f"Scraping page {page.url}.")
+                self.logger.info(f"Items scraped so far: {self.items_scraped}")
                 async for item in self._process_current_page(page):
                     yield item
 
@@ -113,17 +116,18 @@ class EbaySoldItemsSpider(scrapy.Spider):
         Returns:
             list: A list of Playwright PageMethod objects.
         """
+        ps = PageSelectors
         return [
-            PageMethod("wait_for_selector", PageSelectors.GDPR_BANNER_ACCEPT),
-            PageMethod("click", PageSelectors.GDPR_BANNER_ACCEPT),
+            PageMethod("wait_for_selector", ps.GDPR_BANNER_ACCEPT),
+            PageMethod("click", ps.GDPR_BANNER_ACCEPT),
             PageMethod("wait_for_load_state", "networkidle"),
-            PageMethod("fill", PageSelectors.SEARCH_BAR, self.search_query),
+            PageMethod("fill", ps.SEARCH_BAR, self.search_query),
             PageMethod("wait_for_timeout", 1000),
-            PageMethod("press", PageSelectors.SEARCH_BAR, "Enter"),
-            PageMethod("wait_for_selector", PageSelectors.SEARCH_RESULTS_CONTAINER),
-            PageMethod("wait_for_selector", PageSelectors.SOLD_ITEMS_FILTER),
-            PageMethod("click", PageSelectors.SOLD_ITEMS_FILTER),
-            PageMethod("wait_for_selector", PageSelectors.RESULTS_COUNT_HEADING),
+            PageMethod("press", ps.SEARCH_BAR, "Enter"),
+            PageMethod("wait_for_selector", ps.SEARCH_RESULTS_CONTAINER),
+            PageMethod("wait_for_selector", ps.SOLD_ITEMS_FILTER),
+            PageMethod("click", ps.SOLD_ITEMS_FILTER),
+            PageMethod("wait_for_selector", ps.RESULTS_COUNT_HEADING),
         ]
 
     def _extract_total_results(self, response):
@@ -153,20 +157,26 @@ class EbaySoldItemsSpider(scrapy.Spider):
         Yields:
             dict: A dictionary containing scraped item data.
         """
+        self.logger.info(f"Processing current page: {page.url}")
         html_content = await page.content()
         response = TextResponse(url=page.url, body=html_content, encoding="utf-8")
 
+        items_on_page = 0
         for item in response.css(PageSelectors.ITEM_SELECTOR):
             item_data = self._extract_item_data(item)
             if item_data:
                 yield item_data
                 self.items_scraped += 1
+                items_on_page += 1
 
                 if self.max_items and self.items_scraped >= self.max_items:
                     self.logger.info(
-                        "Reached the max_items limit, stopping pagination."
+                        f"Reached the max_items limit ({self.max_items}), stopping pagination."
                     )
                     return
+
+        self.logger.info(f"Finished processing page: {page.url}.")
+        self.logger.info(f"Items scraped on this page: {items_on_page}")
 
     async def _go_to_next_page(self, page):
         """
@@ -178,13 +188,16 @@ class EbaySoldItemsSpider(scrapy.Spider):
         Returns:
             bool: True if navigation to the next page was successful, False otherwise.
         """
+        self.logger.info("Checking for 'Next' button to navigate to the next page.")
         next_button = await page.query_selector(PageSelectors.NEXT_BUTTON)
         if next_button:
-            self.logger.info("Clicking 'Next' button to load more items")
-            await page.wait_for_timeout(500)
+            self.logger.info("Found 'Next' button. Clicking to load the next page.")
+            await page.wait_for_timeout(1200)
             await next_button.click()
             await page.wait_for_selector(PageSelectors.SEARCH_RESULTS_CONTAINER)
+            self.logger.info("Successfully navigated to the next page.")
             return True
+        self.logger.info("No 'Next' button found. Ending pagination.")
         return False
 
     async def _handle_timeout_error(self, page):
@@ -194,13 +207,14 @@ class EbaySoldItemsSpider(scrapy.Spider):
         Args:
             page (playwright.async_api.Page): The Playwright page object.
         """
+        self.logger.error(
+            "Timeout error encountered. Taking a screenshot for debugging."
+        )
         timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
         screenshot_path = f"screenshots/timeout_error_{timestamp}.png"
         os.makedirs("screenshots", exist_ok=True)
         await page.screenshot(path=screenshot_path)
-        self.logger.error(
-            f"Timeout error encountered. Screenshot saved as {screenshot_path}"
-        )
+        self.logger.error(f"Screenshot saved as {screenshot_path}. Closing the page.")
         await page.close()
 
     def _extract_item_data(self, item):
