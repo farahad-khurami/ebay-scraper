@@ -8,40 +8,36 @@ from playwright._impl._errors import TimeoutError
 
 
 class EbaySoldItemsSpider(scrapy.Spider):
-    name = "ebay_sold_items"  # Name of the spider
-    allowed_domains = ["www.ebay.co.uk"]  # Restrict scraping to these domains
-    start_urls = ["https://www.ebay.co.uk"]  # Initial URL to start scraping
+    name = "ebay_sold_items"
+    start_urls = ["https://www.ebay.co.uk"]
 
     def __init__(self, max_items=None, search_query=None, *args, **kwargs):
         super().__init__(*args, **kwargs)
         if not search_query:
             raise ValueError(
                 "The 'search_query' argument is required. Please provide it using -a search_query=\"<value>\". "
-                "\nExample: -a search_query=\"size 9 nikes\""
+                '\nExample: -a search_query="size 9 nikes"'
             )
         self.max_items = int(max_items) if max_items else None
         self.search_query = search_query
-        self.items_scraped = 0 
+        self.items_scraped = 0
         self.total_results = None
 
     def start_requests(self):
-        # Initial request with Playwright enabled to handle dynamic content
         yield scrapy.Request(
             url=self.start_urls[0],
             meta={
-                "playwright": True,  # Enable Playwright for this request
-                "playwright_include_page": True,  # Include the Playwright page object
-                "playwright_page_methods": self._get_initial_page_methods(),  # Methods to execute on the page
+                "playwright": True,
+                "playwright_include_page": True,
+                "playwright_page_methods": self._get_initial_page_methods(),
             },
-            callback=self.parse,  # Callback to handle the response
+            callback=self.parse,
         )
 
     async def parse(self, response):
-        # Main parsing logic to handle results and pagination
         page = response.meta["playwright_page"]
 
         if self.total_results is None:
-            # Extract total results if not already extracted
             self.total_results = self._extract_total_results(response)
             self.logger.info(
                 f"Total results for search (Sold items): {self.total_results}"
@@ -54,11 +50,9 @@ class EbaySoldItemsSpider(scrapy.Spider):
                 break
 
             try:
-                # Process current page and yield scraped items
                 async for item in self._process_current_page(page):
                     yield item
 
-                # Navigate to the next page if possible
                 if not await self._go_to_next_page(page):
                     self.logger.info("No 'Next' button found, ending pagination.")
                     break
@@ -97,27 +91,22 @@ class EbaySoldItemsSpider(scrapy.Spider):
         ]
 
     def _extract_total_results(self, response):
-        # Extract the total number of results from the response
         total_results_text = response.css(
             "h1.srp-controls__count-heading span.BOLD::text"
         ).get()
         if total_results_text:
-            return int(total_results_text.replace(",", ""))  # Convert to integer
-        return 0  # Default to 0 if extraction fails
+            return int(total_results_text.replace(",", ""))
+        return 0
 
     async def _process_current_page(self, page):
-        # Process the current page and yield items
-        html_content = await page.content()  # Get the page's HTML content
-        response = TextResponse(
-            url=page.url, body=html_content, encoding="utf-8"
-        )  # Create a TextResponse object
+        html_content = await page.content()
+        response = TextResponse(url=page.url, body=html_content, encoding="utf-8")
 
-        # Extract items from the current page
         for item in response.css("li.s-item"):
-            item_data = self._extract_item_data(item)  # Extract item data
+            item_data = self._extract_item_data(item)
             if item_data:
-                yield item_data  # Yield the item data
-                self.items_scraped += 1  # Increment the scraped items counter
+                yield item_data
+                self.items_scraped += 1
 
                 # Stop if the maximum number of items has been reached
                 if self.max_items and self.items_scraped >= self.max_items:
@@ -131,32 +120,24 @@ class EbaySoldItemsSpider(scrapy.Spider):
         next_button = await page.query_selector("a.pagination__next")
         if next_button:
             self.logger.info("Clicking 'Next' button to load more items")
-            await next_button.click()  # Click the 'Next' button
-            await page.wait_for_selector(".srp-results")  # Wait for the results to load
+            await next_button.click()
+            await page.wait_for_selector(".srp-results")
             return True
         return False
 
     async def _handle_timeout_error(self, page):
-        # Handle timeout errors by taking a screenshot and logging the error
-        timestamp = datetime.datetime.now().strftime(
-            "%Y%m%d_%H%M%S"
-        )  # Generate a timestamp
-        screenshot_path = (
-            f"screenshots/timeout_error_{timestamp}.png"  # Define screenshot path
-        )
-        os.makedirs(
-            "screenshots", exist_ok=True
-        )  # Create the screenshots directory if it doesn't exist
-        await page.screenshot(path=screenshot_path)  # Take a screenshot
+        timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+        screenshot_path = f"screenshots/timeout_error_{timestamp}.png"
+        os.makedirs("screenshots", exist_ok=True)
+        await page.screenshot(path=screenshot_path)
         self.logger.error(
             f"Timeout error encountered. Screenshot saved as {screenshot_path}"
         )
-        await page.close()  # Close the Playwright page
+        await page.close()
 
     def _extract_item_data(self, item):
-        # Extract data for a single item
         item_data = {
-            "item_id": item.css("::attr(id)").get(),  # Extract the item ID
+            "item_id": item.css("::attr(id)").get(),
             "item_url": item.css("div.s-item__image a::attr(href)").get(),
             "image_url": item.css("div.s-item__image img::attr(src)").get(),
             "title": item.css("div.s-item__title span::text").get(),

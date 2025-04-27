@@ -7,7 +7,7 @@ from sqlalchemy.orm import sessionmaker
 
 Base = declarative_base()
 
-
+# Dataset class for storing sold item data
 class SoldItem(Base):
     __tablename__ = "sold_items"
 
