@@ -164,3 +164,7 @@ cython_debug/
 # /tor_proxy stuff
 docker-compose.yml
 proxy_list.txt
+
+# Generated csv and json files
+*.csv
+*.json
