@@ -118,7 +118,7 @@ class EbaySoldItemsSpider(scrapy.Spider):
             PageMethod("click", PageSelectors.GDPR_BANNER_ACCEPT),
             PageMethod("wait_for_load_state", "networkidle"),
             PageMethod("fill", PageSelectors.SEARCH_BAR, self.search_query),
-            PageMethod("wait_for_timeout", 300),
+            PageMethod("wait_for_timeout", 1000),
             PageMethod("press", PageSelectors.SEARCH_BAR, "Enter"),
             PageMethod("wait_for_selector", PageSelectors.SEARCH_RESULTS_CONTAINER),
             PageMethod("wait_for_selector", PageSelectors.SOLD_ITEMS_FILTER),
@@ -181,6 +181,7 @@ class EbaySoldItemsSpider(scrapy.Spider):
         next_button = await page.query_selector(PageSelectors.NEXT_BUTTON)
         if next_button:
             self.logger.info("Clicking 'Next' button to load more items")
+            await page.wait_for_timeout(500)
             await next_button.click()
             await page.wait_for_selector(PageSelectors.SEARCH_RESULTS_CONTAINER)
             return True
