@@ -6,6 +6,8 @@ from scrapy.http import TextResponse
 from scrapy_playwright.page import PageMethod
 from playwright._impl._errors import TimeoutError
 
+from .constants import PageSelectors
+
 
 class EbaySoldItemsSpider(scrapy.Spider):
     """
@@ -112,22 +114,16 @@ class EbaySoldItemsSpider(scrapy.Spider):
             list: A list of Playwright PageMethod objects.
         """
         return [
-            PageMethod("wait_for_selector", "#gdpr-banner-accept"),
-            PageMethod("click", "#gdpr-banner-accept"),
+            PageMethod("wait_for_selector", PageSelectors.GDPR_BANNER_ACCEPT),
+            PageMethod("click", PageSelectors.GDPR_BANNER_ACCEPT),
             PageMethod("wait_for_load_state", "networkidle"),
-            PageMethod("fill", "#gh-ac", self.search_query),
+            PageMethod("fill", PageSelectors.SEARCH_BAR, self.search_query),
             PageMethod("wait_for_timeout", 300),
-            PageMethod("press", "#gh-ac", "Enter"),
-            PageMethod("wait_for_selector", ".srp-results"),
-            PageMethod(
-                "wait_for_selector",
-                "span.cbx.x-refine__multi-select-cbx:has-text('Sold items')",
-            ),
-            PageMethod(
-                "click",
-                "span.cbx.x-refine__multi-select-cbx:has-text('Sold items')",
-            ),
-            PageMethod("wait_for_selector", "h1.srp-controls__count-heading"),
+            PageMethod("press", PageSelectors.SEARCH_BAR, "Enter"),
+            PageMethod("wait_for_selector", PageSelectors.SEARCH_RESULTS_CONTAINER),
+            PageMethod("wait_for_selector", PageSelectors.SOLD_ITEMS_FILTER),
+            PageMethod("click", PageSelectors.SOLD_ITEMS_FILTER),
+            PageMethod("wait_for_selector", PageSelectors.RESULTS_COUNT_HEADING),
         ]
 
     def _extract_total_results(self, response):
@@ -141,7 +137,7 @@ class EbaySoldItemsSpider(scrapy.Spider):
             int: The total number of results, or 0 if not found.
         """
         total_results_text = response.css(
-            "h1.srp-controls__count-heading span.BOLD::text"
+            f"{PageSelectors.RESULTS_COUNT_HEADING} span.BOLD::text"
         ).get()
         if total_results_text:
             return int(total_results_text.replace(",", ""))
@@ -160,7 +156,7 @@ class EbaySoldItemsSpider(scrapy.Spider):
         html_content = await page.content()
         response = TextResponse(url=page.url, body=html_content, encoding="utf-8")
 
-        for item in response.css("li.s-item"):
+        for item in response.css(PageSelectors.ITEM_SELECTOR):
             item_data = self._extract_item_data(item)
             if item_data:
                 yield item_data
@@ -182,11 +178,11 @@ class EbaySoldItemsSpider(scrapy.Spider):
         Returns:
             bool: True if navigation to the next page was successful, False otherwise.
         """
-        next_button = await page.query_selector("a.pagination__next")
+        next_button = await page.query_selector(PageSelectors.NEXT_BUTTON)
         if next_button:
             self.logger.info("Clicking 'Next' button to load more items")
             await next_button.click()
-            await page.wait_for_selector(".srp-results")
+            await page.wait_for_selector(PageSelectors.SEARCH_RESULTS_CONTAINER)
             return True
         return False
 
@@ -217,26 +213,18 @@ class EbaySoldItemsSpider(scrapy.Spider):
             dict: A dictionary containing item data, or None if invalid.
         """
         item_data = {
-            "item_id": item.css("::attr(id)").get(),
-            "item_url": item.css("div.s-item__image a::attr(href)").get(),
-            "image_url": item.css("div.s-item__image img::attr(src)").get(),
-            "title": item.css("div.s-item__title span::text").get(),
-            "condition": item.css("span.SECONDARY_INFO::text").get(),
-            "date_sold": item.css(
-                "span.s-item__caption--signal.POSITIVE span::text"
-            ).get(),
-            "price": item.css("span.s-item__price span.POSITIVE::text").get(),
-            "shipping_cost": item.css(
-                ".s-item__shipping.s-item__logisticsCost span::text"
-            ).get()
-            or item.css("span.s-item__shipping::text").get(),
-            "shipping_location": item.css(
-                ".s-item__location.s-item__itemLocation span::text"
-            ).get(),
-            "best_offer": item.css(
-                "span.s-item__dynamic.s-item__formatBestOfferEnabled::text"
-            ).get(),
-            "seller_info": item.css("span.s-item__seller-info-text::text").get(),
+            "item_id": item.css(PageSelectors.ITEM_ID).get(),
+            "item_url": item.css(PageSelectors.ITEM_URL).get(),
+            "image_url": item.css(PageSelectors.IMAGE_URL).get(),
+            "title": item.css(PageSelectors.TITLE).get(),
+            "condition": item.css(PageSelectors.CONDITION).get(),
+            "date_sold": item.css(PageSelectors.DATE_SOLD).get(),
+            "price": item.css(PageSelectors.PRICE).get(),
+            "shipping_cost": item.css(PageSelectors.SHIPPING_COST).get()
+            or item.css(PageSelectors.SHIPPING_COST_ALT).get(),
+            "shipping_location": item.css(PageSelectors.SHIPPING_LOCATION).get(),
+            "best_offer": item.css(PageSelectors.BEST_OFFER).get(),
+            "seller_info": item.css(PageSelectors.SELLER_INFO).get(),
         }
 
         if not item_data["item_id"] or item_data["title"] == "Shop on eBay":
