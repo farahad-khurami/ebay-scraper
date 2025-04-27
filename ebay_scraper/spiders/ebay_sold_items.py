@@ -12,15 +12,17 @@ class EbaySoldItemsSpider(scrapy.Spider):
     allowed_domains = ["www.ebay.co.uk"]  # Restrict scraping to these domains
     start_urls = ["https://www.ebay.co.uk"]  # Initial URL to start scraping
 
-    def __init__(self, max_items=None, *args, **kwargs):
+    def __init__(self, max_items=None, search_query=None, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.max_items = (
-            int(max_items) if max_items else None
-        )  # Optional max_items: Limits the number of items to scrape if specified.
-        # Usage: scrapy crawl ebay_sold_items -a max_items=100
-        self.items_scraped = 0  # Counter for the number of items scraped
-        self.total_results = None  # Total number of results for the query
-        self.search_query = "bionicle"  # Search query for eBay
+        if not search_query:
+            raise ValueError(
+                "The 'search_query' argument is required. Please provide it using -a search_query=\"<value>\". "
+                "\nExample: -a search_query=\"size 9 nikes\""
+            )
+        self.max_items = int(max_items) if max_items else None
+        self.search_query = search_query
+        self.items_scraped = 0 
+        self.total_results = None
 
     def start_requests(self):
         # Initial request with Playwright enabled to handle dynamic content

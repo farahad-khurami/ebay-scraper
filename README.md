@@ -46,43 +46,36 @@ The main settings can be found in `ebay_scraper/settings.py`:
 - `ROTATING_PROXY_LIST_PATH`: Path to proxy list
 - `ROTATING_PROXY_PAGE_RETRY_TIMES`: Number of retries per proxy
 
-### Search Query
-To modify the search query, edit the `search_query` variable in `ebay_scraper/spiders/ebay_sold_items.py`:
-
-```python
-def __init__(self, max_items=None, *args, **kwargs):
-    super().__init__(*args, **kwargs)
-    self.search_query = "ps5"  # Change this to your desired search term
-```
-
 ## Usage
 
-### Basic Usage
-Run the spider from the root of the repo:
+### Required Search Query
+The `search_query` argument is **required** when running the spider. You must provide it using the `-a` flag, and the value must be wrapped in quotes. For example:
 ```bash
-scrapy crawl ebay_sold_items
+scrapy crawl ebay_sold_items -a search_query="size 9 nikes"
 ```
 
+If the `search_query` argument is not provided, the spider will raise an error and stop execution.
+
 ### Limit Number of Items
-Specify maximum number of items to scrape (optional):
+You can optionally specify the maximum number of items to scrape using the `max_items` argument:
 ```bash
-scrapy crawl ebay_sold_items -a max_items=100
+scrapy crawl ebay_sold_items -a search_query="size 9 nikes" -a max_items=100
 ```
 
 ### Output Formats
-Save results to CSV or Json. Recommend you use this with `max_items` arg:
+You can optionally save results to CSV or JSON. It is recommended to use this with the `max_items` argument:
 ```bash
 # JSON format
-scrapy crawl ebay_sold_items -O output.json
+scrapy crawl ebay_sold_items -a search_query="size 9 nikes" -O output.json
 
 # CSV format
-scrapy crawl ebay_sold_items -O output.csv
+scrapy crawl ebay_sold_items -a search_query="size 9 nikes" -O output.csv
 
 # JSON format with max_items arg
-scrapy crawl ebay_sold_items -a max_items=100 -O output.json
+scrapy crawl ebay_sold_items -a search_query="size 9 nikes" -a max_items=100 -O output.json
 
 # CSV format with max_items arg
-scrapy crawl ebay_sold_items -a max_items=100 -O output.csv
+scrapy crawl ebay_sold_items -a search_query="size 9 nikes" -a max_items=100 -O output.csv
 ```
 
 ## Database
@@ -106,26 +99,3 @@ The scraper stores data in an SQLite database located at `database/ebay_sold_ite
 ## Error Handling
 
 The scraper automatically captures screenshots when errors occur. Screenshots are saved in the `screenshots/` directory with timestamps and error types.
-
-
-## Troubleshooting
-
-### Common Issues
-
-1. **Proxy Connection Errors**
-   - Ensure Docker containers are running
-   - Check proxy list file exists
-   - Verify Docker network connectivity
-
-2. **Browser Launch Failures**
-   - Ensure Playwright browsers are installed
-   - Check system resources
-   - Verify Python environment
-
-3. **Rate Limiting**
-   - Increase `AUTOTHROTTLE_START_DELAY`
-   - Reduce `CONCURRENT_REQUESTS`
-   - Check proxy rotation
-
-
-
