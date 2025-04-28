@@ -1,5 +1,6 @@
 import datetime
 import os
+import requests
 
 import scrapy
 from scrapy.http import TextResponse
@@ -195,10 +196,32 @@ class EbaySoldItemsSpider(scrapy.Spider):
             await page.wait_for_timeout(1200)
             await next_button.click()
             await page.wait_for_selector(PageSelectors.SEARCH_RESULTS_CONTAINER)
+
+            # Ping IP service every 10 pages
+            if self.items_scraped // 10 > 0 and self.items_scraped % 10 == 0:
+                self._ping_ip_service()
+
             self.logger.info("Successfully navigated to the next page.")
+            self.logger.info("")
             return True
         self.logger.info("No 'Next' button found. Ending pagination.")
         return False
+
+    def _ping_ip_service(self):
+        """
+        Pings an IP service to check the IP address seen by the server.
+        """
+        self.logger.info("Pinging IP service to check the current IP address.")
+        try:
+            response = requests.get("https://api.ipify.org?format=json", timeout=10)
+            if response.status_code == 200:
+                self.logger.info(f"IP Service Response: {response.json()}")
+            else:
+                self.logger.warning(
+                    f"IP service returned a non-200 status code: {response.status_code}"
+                )
+        except requests.RequestException as e:
+            self.logger.error(f"Failed to ping IP service: {e}")
 
     async def _handle_timeout_error(self, page):
         """
