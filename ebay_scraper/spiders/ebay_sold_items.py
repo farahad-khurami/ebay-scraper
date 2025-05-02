@@ -1,6 +1,7 @@
 import datetime
 import os
 import requests
+import random
 
 import scrapy
 from scrapy.http import TextResponse
@@ -50,6 +51,7 @@ class EbaySoldItemsSpider(scrapy.Spider):
         self.search_query = search_query
         self.items_scraped = 0
         self.total_results = None
+        self.last_pause_checkpoint = 0
 
     def start_requests(self):
         """
@@ -98,6 +100,8 @@ class EbaySoldItemsSpider(scrapy.Spider):
                 async for item in self._process_current_page(page):
                     yield item
 
+                await self._check_for_pause(page)
+
                 if not await self._go_to_next_page(page):
                     self.logger.info("No 'Next' button found, ending pagination.")
                     break
@@ -109,6 +113,35 @@ class EbaySoldItemsSpider(scrapy.Spider):
             f"Scraping session ended. Total items scraped: {self.items_scraped}"
         )
         await page.close()
+
+    async def _check_for_pause(self, page):
+        """
+        Checks if the scraper should pause based on the number of items scraped.
+        Pauses for 5-10 seconds every 900-1000 items.
+
+        Args:
+            page (playwright.async_api.Page): The Playwright page object.
+        """
+        random_number = random.randint(700, 1000)
+        current_checkpoint = self.items_scraped // random_number
+
+        # If we've passed a new checkpoint and it's not the same as the last one
+        if current_checkpoint > self.last_pause_checkpoint:
+            # Update the checkpoint
+            self.last_pause_checkpoint = current_checkpoint
+
+            # Generate a random sleep time between 5 and 10 seconds
+            sleep_time = random.uniform(4, 8)
+
+            self.logger.info(
+                f"Taking a break after scraping {self.items_scraped} items."
+            )
+            self.logger.info(f"Pausing for {sleep_time:.2f} seconds...")
+
+            # Pause execution
+            await page.wait_for_timeout(sleep_time * 1000)  # Convert to milliseconds
+
+            self.logger.info("Resuming scraping...")
 
     def _get_initial_page_methods(self):
         """
@@ -197,47 +230,48 @@ class EbaySoldItemsSpider(scrapy.Spider):
             await next_button.click()
             await page.wait_for_selector(PageSelectors.SEARCH_RESULTS_CONTAINER)
 
-            # Ping IP service every 10 pages
-            if self.items_scraped // 10 > 0 and self.items_scraped % 10 == 0:
-                self._ping_ip_service()
-
             self.logger.info("Successfully navigated to the next page.")
             self.logger.info("")
             return True
         self.logger.info("No 'Next' button found. Ending pagination.")
         return False
 
-    def _ping_ip_service(self):
-        """
-        Pings an IP service to check the IP address seen by the server.
-        """
-        self.logger.info("Pinging IP service to check the current IP address.")
-        try:
-            response = requests.get("https://api.ipify.org?format=json", timeout=10)
-            if response.status_code == 200:
-                self.logger.info(f"IP Service Response: {response.json()}")
-            else:
-                self.logger.warning(
-                    f"IP service returned a non-200 status code: {response.status_code}"
-                )
-        except requests.RequestException as e:
-            self.logger.error(f"Failed to ping IP service: {e}")
-
     async def _handle_timeout_error(self, page):
         """
-        Handles timeout errors by taking a screenshot and stopping the spider.
+        Handles timeout errors by taking a screenshot and saving the HTML content,
+        then stopping the spider.
 
         Args:
             page (playwright.async_api.Page): The Playwright page object.
         """
         self.logger.error(
-            "Timeout error encountered. Taking a screenshot for debugging."
+            "Timeout error encountered. Taking a screenshot and saving HTML for debugging."
         )
-        timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-        screenshot_path = f"screenshots/timeout_error_{timestamp}.png"
+
+        # Create screenshots directory if it doesn't exist
         os.makedirs("screenshots", exist_ok=True)
+
+        # Generate timestamp for unique filenames
+        timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+
+        # Save screenshot
+        screenshot_path = f"screenshots/timeout_error_{timestamp}.png"
         await page.screenshot(path=screenshot_path)
-        self.logger.error(f"Screenshot saved as {screenshot_path}. Closing the page.")
+        self.logger.error(f"Screenshot saved as {screenshot_path}")
+
+        # Save HTML content
+        try:
+            html_content = await page.content()
+            html_path = f"screenshots/timeout_error_{timestamp}.html"
+
+            with open(html_path, "w", encoding="utf-8") as html_file:
+                html_file.write(html_content)
+
+            self.logger.error(f"HTML content saved as {html_path}")
+        except Exception as e:
+            self.logger.error(f"Failed to save HTML content: {e}")
+
+        self.logger.error("Debug files saved. Closing the page.")
         await page.close()
 
     def _extract_item_data(self, item):
