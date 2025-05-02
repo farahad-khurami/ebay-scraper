@@ -168,3 +168,6 @@ proxy_list.txt
 # Generated csv and json files
 *.csv
 *.json
+
+*.DS_Store  
+*.db
