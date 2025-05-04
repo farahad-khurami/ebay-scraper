@@ -8,10 +8,10 @@ def run_spiders():
     process = CrawlerProcess(get_project_settings())
 
     instances = [
-        {"search_query": "pokemon cards"},
-        {"search_query": "rolex"},
-        {"search_query": "lego minecraft"},
-        {"search_query": "nintendo switch"},
+        {"search_query": "pokemon cards", "max_items": 100},
+        {"search_query": "rolex", "max_items": 100},
+        {"search_query": "lego minecraft", "max_items": 100},
+        {"search_query": "nintendo switch", "max_items": 100},
     ]
 
     for instance in instances:

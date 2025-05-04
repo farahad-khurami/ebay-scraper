@@ -1,10 +1,11 @@
 class PageSelectors:
-    GDPR_BANNER_ACCEPT = "#gdpr-banner-accept"
-    SEARCH_BAR = "#gh-ac"
+    # Main page selectors
     SEARCH_RESULTS_CONTAINER = ".srp-results"
     SOLD_ITEMS_FILTER = "span.cbx.x-refine__multi-select-cbx:has-text('Sold items')"
     RESULTS_COUNT_HEADING = "h1.srp-controls__count-heading"
     NEXT_BUTTON = "a.pagination__next"
+
+    # Item selectors
     ITEM_SELECTOR = "li.s-item"
     ITEM_ID = "::attr(id)"
     ITEM_URL = "div.s-item__image a::attr(href)"
@@ -18,5 +19,7 @@ class PageSelectors:
     SHIPPING_LOCATION = ".s-item__location.s-item__itemLocation span::text"
     BEST_OFFER = "span.s-item__dynamic.s-item__formatBestOfferEnabled::text"
     SELLER_INFO = "span.s-item__seller-info-text::text"
-    GDPR_ACCEPT_BUTTON = "#gdpr-banner-accept"
-    SEARCH_RESULTS = ".srp-results"
+
+    # Filters and URL parameters
+    SOLD_ITEMS_PARAM = "LH_Sold=1"
+    COMPLETED_ITEMS_PARAM = "LH_Complete=1"
