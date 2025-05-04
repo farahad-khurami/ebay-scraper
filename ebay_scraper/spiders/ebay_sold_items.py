@@ -106,8 +106,9 @@ class EbaySoldItemsSpider(scrapy.Spider):
                     self.logger.info("No 'Next' button found, ending pagination.")
                     break
             except TimeoutError:
-                await self._handle_timeout_error(page)
-                break
+                # await self._handle_timeout_error(page)
+                # break
+                page.reload()
 
         self.logger.info(
             f"Scraping session ended. Total items scraped: {self.items_scraped}"
@@ -236,43 +237,43 @@ class EbaySoldItemsSpider(scrapy.Spider):
         self.logger.info("No 'Next' button found. Ending pagination.")
         return False
 
-    async def _handle_timeout_error(self, page):
-        """
-        Handles timeout errors by taking a screenshot and saving the HTML content,
-        then stopping the spider.
+    # async def _handle_timeout_error(self, page):
+    #     """
+    #     Handles timeout errors by taking a screenshot and saving the HTML content,
+    #     then stopping the spider.
 
-        Args:
-            page (playwright.async_api.Page): The Playwright page object.
-        """
-        self.logger.error(
-            "Timeout error encountered. Taking a screenshot and saving HTML for debugging."
-        )
+    #     Args:
+    #         page (playwright.async_api.Page): The Playwright page object.
+    #     """
+    #     self.logger.error(
+    #         "Timeout error encountered. Taking a screenshot and saving HTML for debugging."
+    #     )
 
-        # Create screenshots directory if it doesn't exist
-        os.makedirs("screenshots", exist_ok=True)
+    #     # Create screenshots directory if it doesn't exist
+    #     os.makedirs("screenshots", exist_ok=True)
 
-        # Generate timestamp for unique filenames
-        timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+    #     # Generate timestamp for unique filenames
+    #     timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
 
-        # Save screenshot
-        screenshot_path = f"screenshots/timeout_error_{timestamp}.png"
-        await page.screenshot(path=screenshot_path)
-        self.logger.error(f"Screenshot saved as {screenshot_path}")
+    #     # Save screenshot
+    #     screenshot_path = f"screenshots/timeout_error_{timestamp}.png"
+    #     await page.screenshot(path=screenshot_path)
+    #     self.logger.error(f"Screenshot saved as {screenshot_path}")
 
-        # Save HTML content
-        try:
-            html_content = await page.content()
-            html_path = f"screenshots/timeout_error_{timestamp}.html"
+    #     # Save HTML content
+    #     try:
+    #         html_content = await page.content()
+    #         html_path = f"screenshots/timeout_error_{timestamp}.html"
 
-            with open(html_path, "w", encoding="utf-8") as html_file:
-                html_file.write(html_content)
+    #         with open(html_path, "w", encoding="utf-8") as html_file:
+    #             html_file.write(html_content)
 
-            self.logger.error(f"HTML content saved as {html_path}")
-        except Exception as e:
-            self.logger.error(f"Failed to save HTML content: {e}")
+    #         self.logger.error(f"HTML content saved as {html_path}")
+    #     except Exception as e:
+    #         self.logger.error(f"Failed to save HTML content: {e}")
 
-        self.logger.error("Debug files saved. Closing the page.")
-        await page.close()
+    #     self.logger.error("Debug files saved. Closing the page.")
+    #     await page.close()
 
     def _extract_item_data(self, item):
         """
