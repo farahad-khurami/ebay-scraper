@@ -1,21 +1,29 @@
 import os
 import re
 from datetime import datetime
-from sqlalchemy import create_engine, Column, String, Float, Integer, ForeignKey, DateTime
+from sqlalchemy import (
+    create_engine,
+    Column,
+    String,
+    Float,
+    Integer,
+    ForeignKey,
+    DateTime,
+)
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, relationship
 from sqlalchemy.sql import exists
 
 Base = declarative_base()
 
-# New 3-table design (no legacy table)
+
 class Search(Base):
     __tablename__ = "searches"
 
     search_id = Column(Integer, primary_key=True, autoincrement=True)
     search_term = Column(String, nullable=False)
     search_date = Column(DateTime, default=datetime.utcnow)
-    
+
     # Relationship
     items = relationship("Item", back_populates="search")
 
@@ -27,7 +35,7 @@ class Seller(Base):
     seller_username = Column(String, nullable=False, unique=True)
     feedback_score = Column(Integer)
     feedback_percent = Column(Float)
-    
+
     # Relationship
     items = relationship("Item", back_populates="seller")
 
@@ -39,9 +47,9 @@ class Item(Base):
     ebay_item_id = Column(String, nullable=False, unique=True)
     search_id = Column(Integer, ForeignKey("searches.search_id"), nullable=False)
     seller_id = Column(Integer, ForeignKey("sellers.seller_id"), nullable=False)
-    
+
     title = Column(String)
-    item_url = Column(String) 
+    item_url = Column(String)
     image_url = Column(String)
     condition = Column(String)
     sold_date = Column(DateTime)
@@ -49,7 +57,7 @@ class Item(Base):
     shipping_price = Column(Float)
     shipping_location = Column(String)
     best_offer = Column(String)
-    
+
     # Relationships
     search = relationship("Search", back_populates="items")
     seller = relationship("Seller", back_populates="items")
@@ -65,7 +73,6 @@ class EbaySoldItemsPipeline:
         self.engine.dispose()
 
     def process_item(self, item, spider):
-        # Process the item data
         item["price"] = self._convert_price_to_float(item.get("price"))
         item["date_sold"] = self._standardise_date(item.get("date_sold"))
         item["shipping_cost"] = self._parse_shipping_cost(item.get("shipping_cost"))
@@ -81,9 +88,8 @@ class EbaySoldItemsPipeline:
         item["seller_feedback_score"] = seller_feedback_score
         item["seller_feedback_percent"] = seller_feedback_percent
 
-        # Insert into the new database schema
         self._insert_item(item, spider.search_query)
-        
+
         return item
 
     def _initialise_database(self):
@@ -92,77 +98,81 @@ class EbaySoldItemsPipeline:
         Base.metadata.create_all(self.engine)
         Session = sessionmaker(bind=self.engine)
         self.session = Session()
-        
+
     def _get_or_create_search(self, search_term):
         # Find or create a search record for this crawl
-        search = self.session.query(Search).filter_by(search_term=search_term).order_by(Search.search_date.desc()).first()
-        
+        search = (
+            self.session.query(Search)
+            .filter_by(search_term=search_term)
+            .order_by(Search.search_date.desc())
+            .first()
+        )
+
         if not search:
             search = Search(search_term=search_term)
             self.session.add(search)
             self.session.commit()
-            
+
         self.current_search_id = search.search_id
         return search
-        
+
     def _get_or_create_seller(self, seller_name, feedback_score, feedback_percent):
         # Find or create a seller record
         if not seller_name:
-            # Handle case where seller info might be missing
             seller_name = "Unknown Seller"
-            
-        seller = self.session.query(Seller).filter_by(seller_username=seller_name).first()
-        
+
+        seller = (
+            self.session.query(Seller).filter_by(seller_username=seller_name).first()
+        )
+
         if not seller:
             seller = Seller(
                 seller_username=seller_name,
                 feedback_score=feedback_score,
-                feedback_percent=feedback_percent
+                feedback_percent=feedback_percent,
             )
             self.session.add(seller)
             self.session.commit()
         elif feedback_score is not None and feedback_percent is not None:
-            # Update the seller's feedback stats if we have new data
             seller.feedback_score = feedback_score
             seller.feedback_percent = feedback_percent
             self.session.commit()
-            
+
         return seller
 
     def _insert_item(self, item, search_term):
         ebay_item_id = item.get("item_id")
-        
-        # Skip if this item is already in the database
-        if self.session.query(exists().where(Item.ebay_item_id == ebay_item_id)).scalar():
+
+        if self.session.query(
+            exists().where(Item.ebay_item_id == ebay_item_id)
+        ).scalar():
             return
-            
-        # Get or create the seller
+
         seller = self._get_or_create_seller(
             item.get("seller_name"),
             item.get("seller_feedback_score"),
-            item.get("seller_feedback_percent")
+            item.get("seller_feedback_percent"),
         )
-        
-        # Parse sold date string to datetime
+
         sold_date = None
         if item.get("date_sold"):
             try:
                 sold_date = datetime.strptime(item.get("date_sold"), "%Y-%m-%d")
             except (ValueError, TypeError):
                 pass
-            
-        # Parse shipping price
+
         shipping_price = None
         if item.get("shipping_cost"):
             if item.get("shipping_cost") == "Free postage":
                 shipping_price = 0.0
             else:
                 try:
-                    shipping_price = float(re.sub(r'[^\d.]', '', item.get("shipping_cost")))
+                    shipping_price = float(
+                        re.sub(r"[^\d.]", "", item.get("shipping_cost"))
+                    )
                 except (ValueError, TypeError):
                     shipping_price = None
-        
-        # Create the new item
+
         new_item = Item(
             ebay_item_id=ebay_item_id,
             search_id=self.current_search_id,
@@ -175,9 +185,9 @@ class EbaySoldItemsPipeline:
             price=item.get("price"),
             shipping_price=shipping_price,
             shipping_location=item.get("shipping_location"),
-            best_offer=item.get("best_offer")
+            best_offer=item.get("best_offer"),
         )
-        
+
         self.session.add(new_item)
         self.session.commit()
 
