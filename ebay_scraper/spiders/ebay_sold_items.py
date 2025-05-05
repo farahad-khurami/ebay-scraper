@@ -34,13 +34,10 @@ class EbaySoldItemsSpider(scrapy.Spider):
     def parse_homepage(self, response):
         self.logger.info("Successfully loaded homepage")
         
-        # Construct search URL
-        encoded_query = urllib.parse.quote_plus(self.search_query)
-        search_url = f"https://www.ebay.co.uk/sch/i.html?_nkw={encoded_query}&_ipg=240"
+        search_url = f"https://www.ebay.co.uk/sch/i.html?_nkw={urllib.parse.quote_plus(self.search_query)}&_ipg=240"
         
         self.logger.info(f"Searching for: {self.search_query}")
         
-        # Request search results - let Scrapy handle the cookies automatically
         yield Request(
             url=search_url,
             callback=self.parse_search_results
@@ -48,8 +45,7 @@ class EbaySoldItemsSpider(scrapy.Spider):
     
     def parse_search_results(self, response):
         self.logger.info("Processing search results page")
-        
-        # Extract filter URL for sold items
+
         sold_filter_url = None
         for link in response.css('a::attr(href)').getall():
             if 'LH_Sold=1' in link:
@@ -57,7 +53,6 @@ class EbaySoldItemsSpider(scrapy.Spider):
                 break
         
         if not sold_filter_url:
-            # If we couldn't find the filter link, construct it manually
             current_url = response.url
             if '?' in current_url:
                 sold_filter_url = f"{current_url}&LH_Sold=1"
@@ -74,12 +69,10 @@ class EbaySoldItemsSpider(scrapy.Spider):
     def parse_filtered_results(self, response):
         self.logger.info(f"Processing search results page: {response.url}")
         
-        # Extract total results count if not already done
         if self.total_results is None:
             self.total_results = self._extract_total_results(response)
             self.logger.info(f"Total results for search (Sold items): {self.total_results}")
         
-        # Process items on the current page
         items_on_page = 0
         for item in response.css(PageSelectors.ITEM_SELECTOR):
             item_data = self._extract_item_data(item)
@@ -90,26 +83,24 @@ class EbaySoldItemsSpider(scrapy.Spider):
                 
                 if self.max_items and self.items_scraped >= self.max_items:
                     self.logger.info(f"Reached max_items limit ({self.max_items}), stopping pagination.")
+                    self.logger.info(f"Total items scraped so far: {self.items_scraped}")
                     return
         
         self.logger.info(f"Items scraped on this page: {items_on_page}")
         self.logger.info(f"Total items scraped so far: {self.items_scraped}")
         self.logger.info(f"")
         
-        # Check if we need to pause between pages
         self._check_for_pause()
         
-        # Get next page URL
         next_page_url = response.css(f"{PageSelectors.NEXT_BUTTON}::attr(href)").get()
         if next_page_url and (not self.max_items or self.items_scraped < self.max_items):
             next_page_url = response.urljoin(next_page_url)
             self.logger.info(f"Moving to next page: {next_page_url}")
             
-            # Add a short delay between pages
             yield Request(
                 url=next_page_url,
                 callback=self.parse_filtered_results,
-                dont_filter=True,  # Important for pages that might have the same URL but different content
+                dont_filter=True,
                 # meta={"download_delay": random.uniform(2, 4)}  # Random delay between requests
             )
         else:
@@ -128,9 +119,7 @@ class EbaySoldItemsSpider(scrapy.Spider):
             # Update the checkpoint
             self.last_pause_checkpoint = current_checkpoint
             
-            # Generate a random sleep time between 1 and 3 seconds
-            sleep_time = random.uniform(1, 3)
-            
+            sleep_time = random.uniform(0, 1.5)
             self.logger.info(f"Taking a break after scraping {self.items_scraped} items.")
             self.logger.info(f"Pausing for {sleep_time:.2f} seconds...")
     
@@ -143,10 +132,8 @@ class EbaySoldItemsSpider(scrapy.Spider):
         ).get()
         
         if total_results_text:
-            # Remove commas and convert to integer
             return int(total_results_text.replace(",", ""))
         
-        # Alternative approach if the selector doesn't work
         match = re.search(r'(\d{1,3}(?:,\d{3})*)\s+results', response.text)
         if match:
             return int(match.group(1).replace(",", ""))
