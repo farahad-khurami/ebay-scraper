@@ -1,6 +1,4 @@
-# Seems to be a hardlimit of 12,000 items that ebay will show
-# 9116
-# before it stops showing sold items
+# Seems to be a hardlimit of 200 pages that ebay will show you before it stops showing sold items
 import random
 import re
 import urllib.parse
@@ -38,7 +36,7 @@ class EbaySoldItemsSpider(scrapy.Spider):
         
         # Construct search URL
         encoded_query = urllib.parse.quote_plus(self.search_query)
-        search_url = f"https://www.ebay.co.uk/sch/i.html?_nkw={encoded_query}"
+        search_url = f"https://www.ebay.co.uk/sch/i.html?_nkw={encoded_query}&_ipg=240"
         
         self.logger.info(f"Searching for: {self.search_query}")
         
