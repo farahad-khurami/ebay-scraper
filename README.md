@@ -1,6 +1,6 @@
 # eBay Sold Items Scraper
 
-A web scraper built with Scrapy and Playwright to extract sold items data from eBay UK. Features rotating Tor proxies, anti-bot measures, and SQLite storage.
+A web scraper built with Scrapy to extract sold items data from eBay UK. Features rotating Tor proxies, anti-bot measures, and SQLite storage.
 
 ## Installation
 
@@ -21,12 +21,7 @@ source venv/bin/activate
 pip install -r requirements.txt
 ```
 
-4. Install Playwright browsers:
-```bash
-playwright install
-```
-
-5. Set up Tor proxies:
+4. Set up Tor proxies:
 ```bash
 cd tor_proxy
 python tor_proxy_setup.py
@@ -42,7 +37,6 @@ The main settings can be found in `ebay_scraper/settings.py`:
 - `AUTOTHROTTLE_ENABLED`: Enable/disable automatic throttling
 - `AUTOTHROTTLE_START_DELAY`: Initial download delay
 - `AUTOTHROTTLE_MAX_DELAY`: Maximum download delay
-- `PLAYWRIGHT_LAUNCH_OPTIONS`: Playwright browser options
 - `ROTATING_PROXY_LIST_PATH`: Path to proxy list
 - `ROTATING_PROXY_PAGE_RETRY_TIMES`: Number of retries per proxy
 
