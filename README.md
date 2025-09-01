@@ -2,7 +2,7 @@
 
 A web scraper built with Scrapy to extract sold items data from eBay UK. Features rotating Tor proxies, anti-bot measures, and SQLite storage.
 
-## Installation
+## First Time Installation & Set Up
 
 1. Clone the repository:
 ```bash
@@ -12,7 +12,7 @@ cd ebay-scraper
 
 2. Create and activate a virtual environment:
 ```bash
-python -m venv venv
+python3 -m venv venv
 source venv/bin/activate
 ```
 
@@ -24,7 +24,7 @@ pip install -r requirements.txt
 4. Set up Tor proxies:
 ```bash
 cd tor_proxy
-python tor_proxy_setup.py
+python3 tor_proxy_setup.py
 docker compose up -d
 ```
 
